@@ -16,6 +16,7 @@ import {
 	MessageSquare,
 	Save,
 	Send,
+	Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,6 +38,8 @@ interface ChatAreaProps {
 	setInputValue: (value: string) => void;
 	selectedModel: AIModel;
 	setSelectedModel: (model: AIModel) => void;
+	onPremiumGenerate: (content: string) => Promise<void>;
+	isPremiumLoading: boolean;
 	onToggleDetails: () => void;
 }
 
@@ -73,6 +76,8 @@ export function ChatArea({
 	setInputValue,
 	selectedModel,
 	setSelectedModel,
+	onPremiumGenerate,
+	isPremiumLoading,
 	onToggleDetails,
 }: ChatAreaProps) {
 	const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -306,37 +311,51 @@ export function ChatArea({
 			</div>
 
 			{/* Input area */}
-			<div className="p-2 sm:p-4 border-t border-gray-800 bg-gray-900/60 backdrop-blur-sm">
-				<form onSubmit={handleSubmit} className="flex flex-col gap-3">
-					<div className="flex items-center gap-2">
-											<Input
-						className="flex-1 border-gray-700 focus:ring-2 focus:ring-purple-600 focus:border-purple-600 bg-gray-950 text-white placeholder:text-gray-400"
-						placeholder="Type a message..."
-						value={inputValue}
-						onChange={(e) => setInputValue(e.target.value)}
-						disabled={isTyping}
-					/>
-											<Button
-						type="button"
-						variant="outline"
-						size="icon"
-						onClick={handleImprovePrompt}
-						disabled={isTyping || isImproving || !inputValue.trim()}
-						title="Improve prompt"
-						className="bg-gray-950 border-gray-700 hover:bg-gray-900 transition-all"
-					>
-						{isImproving ? (
-							<Loader2 className="h-5 w-5 animate-spin text-purple-500" />
-						) : (
-							<Wand2 className="h-5 w-5 text-purple-500" />
-						)}
-					</Button>
-					</div>
-					<Button
-						type="submit"
-						disabled={isTyping || !inputValue.trim()}
-						className="bg-primary hover:bg-primary/90 text-white transition-all flex items-center gap-2"
-					>
+				<div className="p-2 sm:p-4 border-t border-gray-800 bg-gray-900/60 backdrop-blur-sm">
+					<form onSubmit={handleSubmit} className="flex flex-col gap-3">
+						<div className="flex items-center gap-2">
+												<Input
+							className="flex-1 border-gray-700 focus:ring-2 focus:ring-purple-600 focus:border-purple-600 bg-gray-950 text-white placeholder:text-gray-400"
+							placeholder="Type a message..."
+							value={inputValue}
+							onChange={(e) => setInputValue(e.target.value)}
+							disabled={isTyping}
+						/>
+												<Button
+							type="button"
+							variant="outline"
+							size="icon"
+							onClick={handleImprovePrompt}
+							disabled={isTyping || isImproving || !inputValue.trim()}
+							title="Improve prompt"
+							className="bg-gray-950 border-gray-700 hover:bg-gray-900 transition-all"
+						>
+							{isImproving ? (
+								<Loader2 className="h-5 w-5 animate-spin text-purple-500" />
+							) : (
+								<Wand2 className="h-5 w-5 text-purple-500" />
+							)}
+						</Button>
+						</div>
+						<Button
+							type="button"
+							variant="outline"
+							disabled={isTyping || isPremiumLoading || !inputValue.trim()}
+							onClick={() => onPremiumGenerate(inputValue)}
+							className="border-emerald-700 bg-emerald-950/30 text-emerald-200 hover:bg-emerald-900/40 transition-all flex items-center gap-2"
+						>
+							{isPremiumLoading ? (
+								<Loader2 className="h-4 w-4 animate-spin" />
+							) : (
+								<Sparkles className="h-4 w-4" />
+							)}
+							Premium Generate (x402 USDC)
+						</Button>
+						<Button
+							type="submit"
+							disabled={isTyping || !inputValue.trim()}
+							className="bg-primary hover:bg-primary/90 text-white transition-all flex items-center gap-2"
+						>
 						<Send size={16} />
 						Send
 					</Button>

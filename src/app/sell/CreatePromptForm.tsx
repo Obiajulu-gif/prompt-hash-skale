@@ -10,10 +10,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useAccount, useWaitForTransactionReceipt } from "wagmi";
-import { useWriteContract } from "wagmi";
-import { contractAddress, ABI } from "@/web3/PromptHash";
+import { useAccount, useWaitForTransactionReceipt, useWalletClient } from "wagmi";
 import { improvePromptText } from "@/lib/api";
+import { writePromptHashTransaction } from "@/lib/web3/promptHashTransactions";
+import { biteEnabled, explorerLinks, skaleNetwork } from "@/lib/skale";
 
 interface FormData {
   image: string;
@@ -26,14 +26,11 @@ interface FormData {
 
 export function CreatePromptForm() {
   const { address } = useAccount();
+  const { data: walletClient } = useWalletClient();
   const [submitted, setSubmitted] = useState(false);
-
-  const {
-    data: hash,
-    isPending: isContractPending,
-    writeContract,
-    error: contractError,
-  } = useWriteContract();
+  const [hash, setHash] = useState<`0x${string}` | undefined>();
+  const [isContractPending, setIsContractPending] = useState(false);
+  const [contractError, setContractError] = useState<Error | null>(null);
 
   // Wait for transaction confirmation
   const {
@@ -207,27 +204,36 @@ export function CreatePromptForm() {
       alert("Please connect your wallet before proceeding");
       return;
     }
+    if (!walletClient) {
+      alert("Wallet not ready. Please reconnect your CDP wallet.");
+      return;
+    }
 
     if (!validateForm()) return;
 
     setIsSubmitting(true);
+    setContractError(null);
     setTransactionStep('blockchain');
 
     try {
-      // First, initiate blockchain transaction
-      writeContract({
-        address: contractAddress,
-        abi: ABI,
+      setIsContractPending(true);
+      const txHash = await writePromptHashTransaction({
+        walletClient,
+        account: address,
         functionName: "createPrompt",
-        args: [formData.image, formData.title],
+        args: [formData.image, formData.content],
       });
+      setHash(txHash);
 
       setSubmitted(true);
     } catch (error: any) {
       console.error("Error initiating blockchain transaction:", error);
       alert(`Failed to initiate transaction: ${error.message}`);
+      setContractError(error);
       setIsSubmitting(false);
       setTransactionStep('idle');
+    } finally {
+      setIsContractPending(false);
     }
   };
 
@@ -259,9 +265,22 @@ export function CreatePromptForm() {
           <p className="text-sm text-blue-800">
             {getStatusMessage()}
           </p>
+          {biteEnabled && (
+            <p className="text-xs text-blue-700 mt-1">
+              BITE encrypted mode is enabled for write transactions.
+            </p>
+          )}
           {hash && (
             <p className="text-xs text-blue-600 mt-1">
-              Transaction Hash: {hash}
+              Transaction Hash:{" "}
+              <a
+                href={explorerLinks.tx(hash)}
+                target="_blank"
+                rel="noreferrer"
+                className="underline"
+              >
+                {hash}
+              </a>
             </p>
           )}
         </div>
@@ -375,7 +394,9 @@ export function CreatePromptForm() {
         </div>
 
         <div className="space-y-2">
-          <label className="text-sm font-medium">Price (AVAX)</label>
+          <label className="text-sm font-medium">
+            Price ({skaleNetwork.nativeSymbol})
+          </label>
           <div className="relative">
             <DollarSign className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input

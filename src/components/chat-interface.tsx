@@ -6,6 +6,10 @@ import { ChatArea } from "@/components/chat-area"
 import { ConversationDetails } from "@/components/conversation-details"
 import { getChatResponse, improvePrompt, type AIModel } from "@/lib/api"
 import ComparePanel from "@/components/compare-panel"
+import { useAccount, useWalletClient } from "wagmi"
+import { purchasePremiumGeneration } from "@/lib/payments/premiumClient"
+import { atomicToDecimal } from "@/lib/payments/policy"
+import { skaleNetwork } from "@/lib/skale"
 
 export function ChatInterface() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
@@ -26,6 +30,9 @@ export function ChatInterface() {
   const [isTyping, setIsTyping] = useState(false)
   const [selectedModel, setSelectedModel] = useState<AIModel>("gemini-2.5-flash")
   const [inputValue, setInputValue] = useState("")
+  const [isPremiumLoading, setIsPremiumLoading] = useState(false)
+  const { address } = useAccount()
+  const { data: walletClient } = useWalletClient()
 
   // Handle sending a message
   const handleSendMessage = async (content: string) => {
@@ -168,6 +175,51 @@ export function ChatInterface() {
     }
   }
 
+  const handlePremiumGenerate = async (content: string) => {
+    if (!content.trim()) {
+      return
+    }
+    if (!address || !walletClient) {
+      alert("Connect your CDP wallet before purchasing premium generation.")
+      return
+    }
+
+    setIsPremiumLoading(true)
+    try {
+      const premiumResult = await purchasePremiumGeneration({
+        walletClient,
+        address,
+        prompt: content,
+        useCase: selectedModel,
+        confirmPayment: async (context) => {
+          const amount = atomicToDecimal(context.amountAtomic, 6).toFixed(2)
+          return confirm(
+            `Confirm payment of ${amount} USDC on ${context.network} for premium generation? This cannot be reversed.`,
+          )
+        },
+      })
+
+      const premiumMessage: Message = {
+        id: Date.now().toString(),
+        sender: "agent",
+        content: [
+          `Premium generation paid on ${skaleNetwork.name}.`,
+          "",
+          premiumResult.result ?? "No premium result returned.",
+        ].join("\n"),
+        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        reactions: { likes: 0, dislikes: 0 },
+      }
+
+      setConversation((prev) => [...prev, premiumMessage])
+    } catch (error) {
+      console.error("Premium generation failed:", error)
+      alert(error instanceof Error ? error.message : "Premium generation failed")
+    } finally {
+      setIsPremiumLoading(false)
+    }
+  }
+
   return (
     <div className="flex w-full h-[calc(100vh-4rem)] bg-gray-950 overflow-hidden">
       {/* Sidebar */}
@@ -197,6 +249,8 @@ export function ChatInterface() {
               setInputValue={setInputValue}
               selectedModel={selectedModel}
               setSelectedModel={setSelectedModel}
+              onPremiumGenerate={handlePremiumGenerate}
+              isPremiumLoading={isPremiumLoading}
               onToggleDetails={() => setIsDetailsOpen(!isDetailsOpen)}
             />
           ) : (

@@ -4,9 +4,9 @@ import { Button } from "@/components/ui/button";
 import { ethers } from "ethers";
 import { useState, useEffect } from "react";
 import { Loader2 } from "lucide-react";
-import { useAccount, useWaitForTransactionReceipt } from "wagmi";
-import { useWriteContract } from "wagmi";
-import { contractAddress, ABI } from "@/web3/PromptHash";
+import { useAccount, useWaitForTransactionReceipt, useWalletClient } from "wagmi";
+import { writePromptHashTransaction } from "@/lib/web3/promptHashTransactions";
+import { biteEnabled, explorerLinks, skaleNetwork } from "@/lib/skale";
 
 interface Prompt {
   _id: string;
@@ -30,14 +30,12 @@ export function PromptListings() {
   const [error, setError] = useState<string | null>(null);
   const [sellingPromptId, setSellingPromptId] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [hash, setHash] = useState<`0x${string}` | undefined>();
+  const [isContractPending, setIsContractPending] = useState(false);
+  const [contractError, setContractError] = useState<Error | null>(null);
 
   const { address } = useAccount();
-  const {
-    data: hash,
-    isPending: isContractPending,
-    writeContract,
-    error: contractError,
-  } = useWriteContract();
+  const { data: walletClient } = useWalletClient();
 
   // Wait for transaction confirmation
   const {
@@ -50,7 +48,7 @@ export function PromptListings() {
 
   useEffect(() => {
     fetchUserPrompts();
-  }, []);
+  }, [address]);
 
   // Handle successful transaction
   useEffect(() => {
@@ -75,16 +73,8 @@ export function PromptListings() {
 
   const fetchUserPrompts = async () => {
     try {
-      if (!window.ethereum) {
-        throw new Error("MetaMask not installed");
-      }
-
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const signer = await provider.getSigner();
-      const address = await signer.getAddress();
-
       if (!address) {
-        throw new Error("Please connect your wallet first");
+        throw new Error("Please connect your CDP wallet first");
       }
 
       // Fetch prompts for the connected wallet
@@ -109,6 +99,10 @@ export function PromptListings() {
       alert("Please connect your wallet before proceeding");
       return;
     }
+    if (!walletClient) {
+      alert("Wallet not ready. Please reconnect your wallet.");
+      return;
+    }
 
     if (!prompt.promptTokenId) {
       alert("Invalid prompt token ID");
@@ -117,24 +111,29 @@ export function PromptListings() {
 
     setIsSubmitting(true);
     setSellingPromptId(prompt.promptTokenId);
+    setContractError(null);
 
     try {
-      // Convert price to wei (assuming price is in AVAX)
+      // Convert price to wei (native sFUEL on SKALE)
       const priceInWei = ethers.parseEther(prompt.price.toString());
 
-      // List the prompt for sale based on the prompt id
-      writeContract({
-        address: contractAddress,
-        abi: ABI,
+      setIsContractPending(true);
+      const txHash = await writePromptHashTransaction({
+        walletClient,
+        account: address,
         functionName: "listPromptForSale",
         args: [prompt.promptTokenId, priceInWei],
       });
+      setHash(txHash);
 
     } catch (error: any) {
       console.error("Error listing prompt:", error);
       alert(`Failed to initiate transaction: ${error.message}`);
+      setContractError(error);
       setIsSubmitting(false);
       setSellingPromptId(null);
+    } finally {
+      setIsContractPending(false);
     }
   };
 
@@ -209,7 +208,9 @@ export function PromptListings() {
                   </div>
                   <div>
                     <span className="text-muted-foreground">Price: </span>
-                    <span className="font-medium">{prompt.price} AVAX</span>
+                    <span className="font-medium">
+                      {prompt.price} {skaleNetwork.nativeSymbol}
+                    </span>
                   </div>
                   <div>
                     <span className="text-muted-foreground">Created: </span>
@@ -228,7 +229,20 @@ export function PromptListings() {
                     </p>
                     {hash && (
                       <p className="text-xs text-blue-600 mt-1">
-                        Transaction Hash: {hash}
+                        Transaction Hash:{" "}
+                        <a
+                          href={explorerLinks.tx(hash)}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="underline"
+                        >
+                          {hash}
+                        </a>
+                      </p>
+                    )}
+                    {biteEnabled && (
+                      <p className="text-xs text-blue-700 mt-1">
+                        BITE encrypted transaction flow enabled.
                       </p>
                     )}
                   </div>

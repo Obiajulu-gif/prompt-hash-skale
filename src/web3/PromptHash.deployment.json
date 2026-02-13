@@ -1,0 +1,14 @@
+{
+  "contractName": "PromptHash",
+  "contractAddress": "0x0000000000000000000000000000000000000000",
+  "txHash": "",
+  "chainId": 103698795,
+  "rpcUrl": "https://base-sepolia-testnet.skalenodes.com/v1/bite-v2-sandbox",
+  "explorerUrl": "https://base-sepolia-testnet-explorer.skalenodes.com:10032",
+  "explorerContractUrl": "",
+  "explorerTxUrl": "",
+  "feeWallet": "",
+  "feeBps": 100,
+  "deployedAt": "",
+  "command": "npm run deploy:skale"
+}

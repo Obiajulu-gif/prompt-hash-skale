@@ -1,40 +1,56 @@
-"use client"
+"use client";
 
-import '@rainbow-me/rainbowkit/styles.css';
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
-  getDefaultConfig,
-  RainbowKitProvider,
-} from '@rainbow-me/rainbowkit';
-import { WagmiProvider } from 'wagmi';
-import {
-  avalancheFuji,
-  avalanche,
-} from 'wagmi/chains';
-import {
-  QueryClientProvider,
-  QueryClient,
-} from "@tanstack/react-query";
-
-const config = getDefaultConfig({
-  appName: 'My Avalanche Dapp',
-  projectId: 'YOUR_PROJECT_ID',
-  chains: [avalancheFuji, avalanche],
-  ssr: true, // If your dApp uses server side rendering (SSR)
-});
+  createCDPEmbeddedWalletConnector,
+} from "@coinbase/cdp-wagmi";
+import { http } from "viem";
+import { createConfig, WagmiProvider } from "wagmi";
+import { skaleSupportedChains } from "@/lib/skale";
 
 const queryClient = new QueryClient();
+const cdpProjectId =
+  process.env.NEXT_PUBLIC_CDP_PROJECT_ID ?? "cdp-project-id-required";
 
+const transports = Object.fromEntries(
+  skaleSupportedChains.map((chain) => [chain.id, http(chain.rpcUrls.default.http[0])]),
+) as Record<number, ReturnType<typeof http>>;
 
-export const Provider = ({ children,
+const connectors =
+  typeof window === "undefined"
+    ? []
+    : [
+        createCDPEmbeddedWalletConnector({
+          cdpConfig: {
+            projectId: cdpProjectId,
+            ethereum: {
+              createOnLogin: "eoa",
+            },
+          },
+          providerConfig: {
+            chains: skaleSupportedChains,
+            transports,
+            announceProvider: true,
+          },
+        }),
+      ];
+
+const wagmiConfig = createConfig({
+  chains: skaleSupportedChains,
+  connectors,
+  transports,
+  ssr: true,
+});
+
+export const Provider = ({
+  children,
 }: Readonly<{
   children: React.ReactNode;
 }>) => {
   return (
-    <WagmiProvider config={config}>
+    <WagmiProvider config={wagmiConfig}>
       <QueryClientProvider client={queryClient}>
-        <RainbowKitProvider>
-          {children}
-        </RainbowKitProvider>
+        {children}
       </QueryClientProvider>
     </WagmiProvider>
   );

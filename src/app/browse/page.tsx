@@ -16,17 +16,16 @@ import { Badge } from "@/components/ui/badge";
 import {
   StarIcon,
   Filter,
-  ArrowRight,
   Search,
   Eye,
   ShoppingCart,
   Loader2,
 } from "lucide-react";
 import { useState, useEffect } from "react";
-import { useAccount, useWaitForTransactionReceipt } from "wagmi";
-import { useWriteContract } from "wagmi";
-import { contractAddress, ABI } from "@/web3/PromptHash";
+import { useAccount, useWaitForTransactionReceipt, useWalletClient } from "wagmi";
 import { ethers } from "ethers";
+import { writePromptHashTransaction } from "@/lib/web3/promptHashTransactions";
+import { biteEnabled, explorerLinks, skaleNetwork } from "@/lib/skale";
 
 interface Prompt {
   _id: string;
@@ -55,14 +54,12 @@ export default function BrowsePage() {
   const [selectedCategory, setSelectedCategory] = useState("");
   const [buyingPromptId, setBuyingPromptId] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [hash, setHash] = useState<`0x${string}` | undefined>();
+  const [isContractPending, setIsContractPending] = useState(false);
+  const [contractError, setContractError] = useState<Error | null>(null);
 
   const { address } = useAccount();
-  const {
-    data: hash,
-    isPending: isContractPending,
-    writeContract,
-    error: contractError,
-  } = useWriteContract();
+  const { data: walletClient } = useWalletClient();
 
   // Wait for transaction confirmation
   const {
@@ -123,6 +120,10 @@ export default function BrowsePage() {
       alert("Please connect your wallet before proceeding");
       return;
     }
+    if (!walletClient) {
+      alert("Wallet not ready. Please reconnect your CDP wallet.");
+      return;
+    }
 
     if (!prompt.promptTokenId) {
       alert("Invalid prompt token ID");
@@ -137,25 +138,30 @@ export default function BrowsePage() {
 
     setIsSubmitting(true);
     setBuyingPromptId(prompt.promptTokenId);
+    setContractError(null);
 
     try {
       // Convert price to wei (the value to send with the transaction)
-      const priceInWei = ethers.parseEther((prompt.price*1.2).toString());
+      const priceInWei = ethers.parseEther((prompt.price * 1.2).toString());
 
-      // Buy the prompt - this is a payable function
-      writeContract({
-        address: contractAddress,
-        abi: ABI,
+      setIsContractPending(true);
+      const txHash = await writePromptHashTransaction({
+        walletClient,
+        account: address,
         functionName: "buyPrompt",
         args: [prompt.promptTokenId],
-        value: priceInWei, // Send the exact price as value
+        value: priceInWei,
       });
+      setHash(txHash);
 
     } catch (error: any) {
       console.error("Error buying prompt:", error);
       alert(`Failed to initiate transaction: ${error.message}`);
+      setContractError(error);
       setIsSubmitting(false);
       setBuyingPromptId(null);
+    } finally {
+      setIsContractPending(false);
     }
   };
 
@@ -242,7 +248,9 @@ export default function BrowsePage() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Price Range (AVAX)</label>
+                <label className="text-sm font-medium">
+                  Price Range ({skaleNetwork.nativeSymbol})
+                </label>
                 <Slider
                   value={priceRange}
                   onValueChange={setPriceRange}
@@ -250,8 +258,12 @@ export default function BrowsePage() {
                   step={1}
                 />
                                   <div className="flex justify-between text-sm text-gray-400">
-                    <span>{priceRange[0]} AVAX</span>
-                    <span>{priceRange[1]} AVAX</span>
+                    <span>
+                      {priceRange[0]} {skaleNetwork.nativeSymbol}
+                    </span>
+                    <span>
+                      {priceRange[1]} {skaleNetwork.nativeSymbol}
+                    </span>
                   </div>
               </div>
               <div className="space-y-2">
@@ -339,7 +351,7 @@ export default function BrowsePage() {
                     </CardContent>
                     <CardFooter className="p-4 pt-0 flex justify-between items-center">
                       <span className="text-lg font-bold">
-                        {prompt.price} AVAX
+                        {prompt.price} {skaleNetwork.nativeSymbol}
                       </span>
                       <Button className="bg-primary hover:bg-primary/90" onClick={() => openModal(prompt)}>
                         <Eye className="mr-2 h-4 w-4" />
@@ -423,7 +435,20 @@ export default function BrowsePage() {
                     </p>
                     {hash && (
                       <p className="text-xs text-blue-600 mt-1">
-                        Transaction Hash: {hash}
+                        Transaction Hash:{" "}
+                        <a
+                          href={explorerLinks.tx(hash)}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="underline"
+                        >
+                          {hash}
+                        </a>
+                      </p>
+                    )}
+                    {biteEnabled && (
+                      <p className="text-xs text-blue-700 mt-1">
+                        BITE encrypted transaction flow enabled.
                       </p>
                     )}
                   </div>
@@ -431,7 +456,7 @@ export default function BrowsePage() {
 
                 <div className="flex justify-between items-center">
                   <span className="text-2xl font-bold">
-                    {selectedPrompt.price} AVAX
+                    {selectedPrompt.price} {skaleNetwork.nativeSymbol}
                   </span>
                   <Button
                     size="lg"

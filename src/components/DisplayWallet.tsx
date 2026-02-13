@@ -19,6 +19,7 @@ import {
   AlertCircle,
   X,
 } from "lucide-react";
+import { skaleNetwork } from "@/lib/skale";
 
 declare global {
   interface Window {
@@ -77,7 +78,7 @@ const DisplayWallet = () => {
 
   const connect = async () => {
     if (!window.ethereum) {
-      setError("MetaMask not installed");
+      setError("Injected wallet not installed");
       return;
     }
 
@@ -87,15 +88,15 @@ const DisplayWallet = () => {
         method: "wallet_addEthereumChain",
         params: [
           {
-            chainId: "0x128",
-            chainName: "Avalanche C-Chain Testnet",
+            chainId: `0x${skaleNetwork.chainId.toString(16)}`,
+            chainName: skaleNetwork.name,
             nativeCurrency: {
-              name: "AVAX",
-              symbol: "AVAX",
+              name: "SKALE sFUEL",
+              symbol: skaleNetwork.nativeSymbol,
               decimals: 18,
             },
-            rpcUrls: ["https://api.avax-test.network/ext/bc/C/rpc"],
-            blockExplorerUrls: ["https://subnets-test.avax.network/c-chain"],
+            rpcUrls: [skaleNetwork.rpcUrl],
+            blockExplorerUrls: [skaleNetwork.explorerUrl],
           },
         ],
       });
@@ -159,7 +160,7 @@ const DisplayWallet = () => {
 
   const viewInExplorer = () => {
     if (account) {
-      window.open(`https://etherscan.io/testnet/account/${account}`, "_blank");
+      window.open(`${skaleNetwork.explorerUrl}/address/${account}`, "_blank");
     }
   };
   return (

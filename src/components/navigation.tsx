@@ -8,10 +8,12 @@ import {
   Settings,
   User,
   MessageCircle,
+  Bug,
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { CustomConnectButton } from "./CustomConnectButton";
+import { skaleNetwork } from "@/lib/skale";
 
 export function Navigation() {
   return (
@@ -26,8 +28,8 @@ export function Navigation() {
               height={32}
               className="object-contain"
             />
-            <span className="hidden font-bold sm:inline-block text-purple-400 text-lg tracking-tight">
-              PromptHash
+            <span className="hidden font-bold sm:inline-block text-emerald-300 text-lg tracking-tight">
+              PromptHash SKALE
             </span>
           </Link>
           <nav className="flex items-center space-x-6 text-sm font-medium">
@@ -65,6 +67,13 @@ export function Navigation() {
             >
               <MessageCircle className="h-4 w-4" />
               <span>Chat</span>
+            </Link>
+            <Link
+              href="/admin/receipts"
+              className="transition-colors hover:text-gray-300 text-foreground flex items-center gap-1"
+            >
+              <Bug className="h-4 w-4" />
+              <span>Receipts</span>
             </Link>
           </nav>
         </div>
@@ -117,6 +126,13 @@ export function Navigation() {
                 <MessageCircle className="h-4 w-4" />
                 <span>Chat</span>
               </Link>
+              <Link
+                href="/admin/receipts"
+                className="hover:text-gray-300 flex items-center gap-2"
+              >
+                <Bug className="h-4 w-4" />
+                <span>Receipts</span>
+              </Link>
             </nav>
           </SheetContent>
         </Sheet>
@@ -133,6 +149,14 @@ export function Navigation() {
             </div>
           </div>
           {/* display wallet here */}
+          <div className="hidden xl:flex items-center rounded-full border border-gray-800 bg-gray-900/60 px-3 py-1 text-xs text-gray-300">
+            <span className="font-semibold text-emerald-300 mr-2">
+              {skaleNetwork.name}
+            </span>
+            <span>
+              Gas: {skaleNetwork.nativeSymbol} | Pay: USDC
+            </span>
+          </div>
           <CustomConnectButton />
         </div>
       </div>

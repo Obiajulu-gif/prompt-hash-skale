@@ -6,10 +6,15 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test": "tsx --test test/**/*.test.ts",
+    "compile:contract": "node scripts/compile-contract.mjs",
+    "deploy:skale": "node scripts/deploy-skale.mjs"
   },
   "dependencies": {
     "@ai-sdk/openai": "^1.2.5",
+    "@coinbase/cdp-core": "^0.0.85",
+    "@coinbase/cdp-wagmi": "^0.0.85",
     "@ethersproject/contracts": "^5.8.0",
     "@ethersproject/providers": "^5.8.0",
     "@ethersproject/wallet": "^5.8.0",
@@ -43,8 +48,12 @@
     "@radix-ui/react-toggle": "^1.1.1",
     "@radix-ui/react-toggle-group": "^1.1.1",
     "@radix-ui/react-tooltip": "^1.1.6",
-    "@rainbow-me/rainbowkit": "^2.2.8",
+    "@skalenetwork/bite": "^0.7.1",
     "@tanstack/react-query": "^5.85.3",
+    "@x402/core": "^2.3.1",
+    "@x402/evm": "^2.3.1",
+    "@x402/fetch": "^2.3.0",
+    "@x402/next": "^2.3.0",
     "ai": "^4.1.61",
     "autoprefixer": "^10.4.20",
     "chart.js": "^4.4.8",
@@ -86,6 +95,7 @@
     "@types/react-dom": "^19.2.3",
     "postcss": "^8",
     "tailwindcss": "^3.4.17",
+    "tsx": "^4.20.6",
     "typescript": "^5"
   }
 }

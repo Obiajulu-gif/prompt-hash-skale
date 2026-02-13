@@ -4,16 +4,16 @@ import { Provider } from "Provider";
 import { ThemeProvider } from "@/components/theme-provider";
 
 export const metadata: Metadata = {
-  title: "Prompt Hash",
+  title: "PromptHash on SKALE",
   description:
-    "Explore the best prompts from top creators. Generate images, text & code with ease.",
+    "Prompt marketplace on SKALE with paid premium AI routes, x402, and CDP embedded wallets.",
   icons: "/images/logo.png",
   openGraph: {
-    title: "Prompt Hash",
+    title: "PromptHash on SKALE",
     description:
       "Explore a curated collection of top creator prompts for images, text & code generation.",
     url: "https://prompthash.example.com",
-    siteName: "Prompt Hash",
+    siteName: "PromptHash on SKALE",
     locale: "en_US",
     type: "website",
   },
